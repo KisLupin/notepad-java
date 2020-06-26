@@ -1,20 +1,12 @@
 package ui;
 
-import com.sun.tools.javac.Main;
 import common.Common;
 import util.FileMenuUtil;
 
 import javax.swing.*;
-import javax.swing.event.CaretEvent;
-import javax.swing.event.CaretListener;
-import javax.swing.event.UndoableEditEvent;
-import javax.swing.event.UndoableEditListener;
 import javax.swing.undo.UndoManager;
 import java.awt.*;
 import java.awt.event.*;
-import java.util.logging.Logger;
-
-import static com.sun.java.accessibility.util.AWTEventMonitor.addWindowListener;
 
 public class MainUI extends JFrame implements ActionListener {
         private static final long serialVersionUID = 1L;
@@ -85,7 +77,7 @@ public class MainUI extends JFrame implements ActionListener {
             menuFile();
             menuEdit();
             setJMenuBar(menuBar);
-            textEdit();
+            initTextAreaPopupMenu();
         }
 
         private void menuBar(){
@@ -281,7 +273,7 @@ public class MainUI extends JFrame implements ActionListener {
             undoManager = new UndoManager();
         }
 
-        private void textEdit(){
+        private void initTextAreaPopupMenugit (){
             textAreaPopup = new JPopupMenu();
 
             popUndo = new JMenuItem(Common.UNDO);
