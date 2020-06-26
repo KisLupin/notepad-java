@@ -1,5 +1,6 @@
 package ui;
 
+import com.sun.tools.javac.Main;
 import common.Common;
 import util.FileMenuUtil;
 
@@ -17,32 +18,21 @@ import static com.sun.java.accessibility.util.AWTEventMonitor.addWindowListener;
 
 public class MainUI extends JFrame implements ActionListener {
         private static final long serialVersionUID = 1L;
-
-        JMenuBar menuBar;
-        JSeparator line;
-        // Menus
-        JMenu file, edit, format, view, help, viewHelp, source;
-        // PopupMenu
-        JPopupMenu textAreaPopupMenu;
-        // File Items
-        JMenuItem news, open, save, saveAs, properties, exit;
-        // Edit Items
-        JMenuItem undo, copy, paste, cut, find, findNext, replace, selectAll, timeDate;
-        // PopupMenu
-        JMenuItem popUndo, popCopy, popPaste, popCut, popSelectAll, popTimeDate;
-        // Format Items
-        JMenuItem wordWrap, resetFont, font, fontSize, fontStyle;
-        // View Items
-        JMenuItem skin;
-        // Help Items
-        JMenuItem about, homePage, skinPage, sourceCode, sourceCodeDownload, api;
-        // textArea
         public static JTextArea textArea;
-        // textArea font
-        Font textAreaFont;
-        // textArea scroll
-        JScrollPane textAreaScroll;
+        private JMenuBar menuBar;
+        private JSeparator line;
+        private JPopupMenu textAreaPopup;
+        private JScrollPane textScroll;
+        // Menus
+        private JMenu file, edit, format, view, help, viewHelp, source;
+        //menu item
+        private JMenuItem news, open, save, saveAs, properties, exit;
+        //edit item
+        private JMenuItem undo, copy, paste, cut, find, findNext, replace, selectAll, timeDate;
+        //popup item
+        private JMenuItem popUndo, popCopy, popPaste, popCut, popSelectAll, popTimeDate;
 
+    // PopupMenu
         public static UndoManager undoManager;
 
         public static String filePath = Common.EMPTY;
@@ -56,6 +46,7 @@ public class MainUI extends JFrame implements ActionListener {
         public static int fontSizeNum = Common.FONT_SIZE_NUM;
         public static int fontStyleNum = Common.FONT_STYLE_NUM;
         public static String findWhat = Common.EMPTY;
+        private Font textAreaFont;
 
         private void setMainUIXY() {
             pointX = getMainUIX();
@@ -77,7 +68,7 @@ public class MainUI extends JFrame implements ActionListener {
 
         public void init() {
             initMenu();
-            initTextArea();
+            initText();
             this.setResizable(true);
             this.setBounds(new Rectangle(150, 100, 800, 550));
             this.setVisible(true);
@@ -87,47 +78,41 @@ public class MainUI extends JFrame implements ActionListener {
                     file.exit(MainUI.this);
                 }
             });
-
-            setMainUIXY();
         }
 
-        private void initMenu() {
+        private void initMenu(){
             menuBar();
             menuFile();
             menuEdit();
-            menuFormat();
-            menuView();
-            menuHelp();
             setJMenuBar(menuBar);
-            initTextAreaPopupMenu();
-            setDisabledMenuAtCreating(false);
+            textEdit();
         }
 
-        private void menuBar() {
+        private void menuBar(){
             menuBar = new JMenuBar();
         }
 
-        private void menuFile() {
+        private void menuFile(){
             file = new JMenu(Common.FILE);
 
             news = new JMenuItem(Common.NEW);
             news.addActionListener(this);
-            news.setAccelerator(KeyStroke.getKeyStroke(Common.N, InputEvent.CTRL_MASK));
+            news.setAccelerator(KeyStroke.getKeyStroke(Common.N, InputEvent.CTRL_DOWN_MASK));
             file.add(news);
 
             open = new JMenuItem(Common.OPEN);
             open.addActionListener(this);
-            open.setAccelerator(KeyStroke.getKeyStroke(Common.O, InputEvent.CTRL_MASK));
+            open.setAccelerator(KeyStroke.getKeyStroke(Common.O, InputEvent.CTRL_DOWN_MASK));
             file.add(open);
 
             save = new JMenuItem(Common.SAVE);
             save.addActionListener(this);
-            save.setAccelerator(KeyStroke.getKeyStroke(Common.S, InputEvent.CTRL_MASK));
+            save.setAccelerator(KeyStroke.getKeyStroke(Common.S, InputEvent.CTRL_DOWN_MASK));
             file.add(save);
 
             saveAs = new JMenuItem(Common.SAVE_AS);
             saveAs.addActionListener(this);
-            saveAs.setAccelerator(KeyStroke.getKeyStroke(Common.S, InputEvent.CTRL_MASK + InputEvent.SHIFT_MASK));
+            saveAs.setAccelerator(KeyStroke.getKeyStroke(Common.S, InputEvent.CTRL_DOWN_MASK + InputEvent.SHIFT_DOWN_MASK));
             file.add(saveAs);
 
             line = new JSeparator();
@@ -147,12 +132,13 @@ public class MainUI extends JFrame implements ActionListener {
             menuBar.add(file);
         }
 
-        private void menuEdit() {
+        private void menuEdit(){
+            //undo, copy, paste, cut, find, findNext, replace, selectAll, timeDate
             edit = new JMenu(Common.EDIT);
 
             undo = new JMenuItem(Common.UNDO);
             undo.addActionListener(this);
-            undo.setAccelerator(KeyStroke.getKeyStroke(Common.Z, InputEvent.CTRL_MASK));
+            undo.setAccelerator(KeyStroke.getKeyStroke(Common.Z, InputEvent.CTRL_DOWN_MASK));
             edit.add(undo);
 
             line = new JSeparator();
@@ -207,124 +193,76 @@ public class MainUI extends JFrame implements ActionListener {
             menuBar.add(edit);
         }
 
-        private void initTextAreaPopupMenu() {
-            textAreaPopupMenu = new JPopupMenu();
+        private void initText(){
+            textArea = new JTextArea(Common.EMPTY);
+            textArea.setLineWrap(true);
+            lineWrap = true;
+            textAreaFont = new Font(FontManagerUI.FONT_TYPE, fontStyleNum,FontManagerUI.FONT_SIZE);
+            textArea.setFont(textAreaFont);
+            textArea.add(textAreaPopup);
+            initUndoManager();
+            //addUndoable edit listener
+            textArea.getDocument().addUndoableEditListener(e -> undoManager.addEdit(e.getEdit()));
+            // add caret listener
+            textArea.addCaretListener(e ->{
+                if (savedText != null && textArea.getText() != null){
+                    if (savedText.equals(textArea.getText())){
+                        setSaved(true);
+                    }else {
+                        setSaved(false);
+                    }
+                }
+                textArea.setFocusable(true);
+                setDisabledMenuAtCreating(true);
+            });
 
-            popUndo = new JMenuItem(Common.UNDO);
-            popUndo.addActionListener(this);
-            textAreaPopupMenu.add(popUndo);
+            textArea.addMouseMotionListener(new MouseMotionListener() {
+                @Override
+                public void mouseDragged(MouseEvent e) {
+                    isSelectedText();
+                }
+                @Override
+                public void mouseMoved(MouseEvent e) {
+                    isSelectedText();
+                }
+            });
 
-            line = new JSeparator();
-            textAreaPopupMenu.add(line);
+            textArea.addMouseListener(new MouseListener() {
+                @Override
+                public void mouseClicked(MouseEvent e) {
 
-            popCut = new JMenuItem(Common.CUT);
-            popCut.addActionListener(this);
-            textAreaPopupMenu.add(popCut);
+                }
 
-            popCopy = new JMenuItem(Common.COPY);
-            popCopy.addActionListener(this);
-            textAreaPopupMenu.add(popCopy);
+                @Override
+                public void mousePressed(MouseEvent e) {
+                    if (e.getButton() == MouseEvent.BUTTON3){
+                        isSelectedText();
+                        textAreaPopup.show(textArea, e.getX(), e.getY());
+                    }
+                }
 
-            popPaste = new JMenuItem(Common.PASTE);
-            popPaste.addActionListener(this);
-            textAreaPopupMenu.add(popPaste);
+                @Override
+                public void mouseReleased(MouseEvent e) {
+                    if (e.getButton() == MouseEvent.BUTTON3){
+                        isSelectedText();
+                    }
+                }
 
-            line = new JSeparator();
-            textAreaPopupMenu.add(line);
+                @Override
+                public void mouseEntered(MouseEvent e) {
 
-            popSelectAll = new JMenuItem(Common.SELECT_ALL);
-            popSelectAll.addActionListener(this);
-            textAreaPopupMenu.add(popSelectAll);
+                }
 
-            popTimeDate = new JMenuItem(Common.TIME_DATE);
-            popTimeDate.addActionListener(this);
-            textAreaPopupMenu.add(popTimeDate);
+                @Override
+                public void mouseExited(MouseEvent e) {
+
+                }
+            });
+            textScroll = new JScrollPane(textArea);
+            this.add((textScroll));
         }
 
-        private void menuFormat() {
-            format = new JMenu(Common.FORMAT);
-
-            wordWrap = new JMenuItem(Common.WORD_WRAP);
-            wordWrap.addActionListener(this);
-            wordWrap.setAccelerator(KeyStroke.getKeyStroke(Common.W, InputEvent.CTRL_MASK));
-            format.add(wordWrap);
-
-            resetFont = new JMenuItem(Common.RESET_FONT);
-            resetFont.addActionListener(this);
-            format.add(resetFont);
-
-            line = new JSeparator();
-            format.add(line);
-
-            font = new JMenuItem(Common.FONT);
-            font.addActionListener(this);
-            format.add(font);
-
-            fontSize = new JMenuItem(Common.FONT_SIZE_TITLE);
-            fontSize.addActionListener(this);
-            format.add(fontSize);
-
-            fontStyle = new JMenuItem(Common.FONT_STYLE);
-            fontStyle.addActionListener(this);
-            format.add(fontStyle);
-
-            menuBar.add(format);
-        }
-
-        private void menuView() {
-            view = new JMenu(Common.VIEW);
-
-            skin = new JMenuItem(Common.SKIN);
-            skin.addActionListener(this);
-            view.add(skin);
-
-            menuBar.add(view);
-        }
-
-        private void menuHelp() {
-            help = new JMenu(Common.Help);
-
-            viewHelp = new JMenu(Common.VIEW_HELP);
-            help.add(viewHelp);
-
-            homePage = new JMenuItem(Common.NOTEPAD_HOME_PAGE);
-            homePage.addActionListener(this);
-            viewHelp.add(homePage);
-
-            skinPage = new JMenuItem(Common.NOTEPAD_SKINS);
-            skinPage.addActionListener(this);
-            viewHelp.add(skinPage);
-
-            source = new JMenu(Common.SOURCE);
-            viewHelp.add(source);
-
-            sourceCode = new JMenuItem(Common.SOURCE_CODE);
-            sourceCode.addActionListener(this);
-            source.add(sourceCode);
-
-            sourceCodeDownload = new JMenuItem(Common.SOURCE_CODE_DOWNLOAD);
-            sourceCodeDownload.addActionListener(this);
-            source.add(sourceCodeDownload);
-
-            api = new JMenuItem(Common.NOTEPAD_API);
-            api.addActionListener(this);
-            viewHelp.add(api);
-
-            line = new JSeparator();
-            help.add(line);
-
-            about = new JMenuItem(Common.ABOUT_NOTEPAD);
-            about.addActionListener(this);
-            help.add(about);
-
-            menuBar.add(help);
-        }
-
-        private void initUndoManager(){
-            undoManager = new UndoManager();
-        }
-
-        private void setDisabledMenuAtCreating(boolean b){
+        private void setDisabledMenuAtCreating(boolean b) {
             undo.setEnabled(b);
             popUndo.setEnabled(b);
             cut.setEnabled(b);
@@ -335,214 +273,85 @@ public class MainUI extends JFrame implements ActionListener {
             findNext.setEnabled(b);
         }
 
-        private void setDisabledMenuAtSelecting(boolean b){
-            cut.setEnabled(b);
-            popCut.setEnabled(b);
-            copy.setEnabled(b);
-            popCopy.setEnabled(b);
+        private void setSaved(boolean b) {
+            this.saved = b;
         }
 
-        private void initTextArea() {
-            textArea = new JTextArea(Common.EMPTY);
-            textArea.setLineWrap(true);
-            lineWrap = true;
-            textAreaFont = new Font(FontManagerUI.FONT_TYPE, fontStyleNum, FontManagerUI.FONT_SIZE);
-            textArea.setFont(textAreaFont);
-
-            textArea.add(textAreaPopupMenu);
-
-            initUndoManager();
-            // add Undoable edit listener
-            textArea.getDocument().addUndoableEditListener(new UndoableEditListener() {
-                public void undoableEditHappened(UndoableEditEvent e) {
-                    undoManager.addEdit(e.getEdit());
-                }
-            });
-            // add caret listener
-            textArea.addCaretListener(new CaretListener() {
-                public void caretUpdate(CaretEvent e) {
-                    if (null != savedText && null != textArea.getText()) {
-                        if (savedText.equals(textArea.getText())) {
-                            setSaved(true);
-                        } else {
-                            setSaved(false);
-                        }
-                    }
-                    textArea.setFocusable(true);
-                    setDisabledMenuAtCreating(true);
-                }
-            });
-            // add mouse motion listener
-            textArea.addMouseMotionListener(new MouseMotionListener() {
-                public void mouseMoved(MouseEvent e) {
-                    isSelectedText();
-                }
-
-                public void mouseDragged(MouseEvent e) {
-                    isSelectedText();
-                }
-            });
-            textArea.addMouseListener(new MouseListener() {
-                public void mouseReleased(MouseEvent e) {
-                    if (e.getButton() == MouseEvent.BUTTON3) {
-                        isSelectedText();
-                    }
-                }
-
-                public void mousePressed(MouseEvent e) {
-                    if (e.getButton() == MouseEvent.BUTTON3) {
-                        isSelectedText();
-                        textAreaPopupMenu.show(textArea, e.getX(), e.getY());
-                    }
-                }
-
-                public void mouseExited(MouseEvent e) {
-                }
-
-                public void mouseEntered(MouseEvent e) {
-
-                }
-
-                public void mouseClicked(MouseEvent e) {
-                }
-            });
-            textAreaScroll = new JScrollPane(textArea);
-            this.add(textAreaScroll);
+        private void initUndoManager() {
+            undoManager = new UndoManager();
         }
 
-        private void isSelectedText() {
+        private void textEdit(){
+            textAreaPopup = new JPopupMenu();
+
+            popUndo = new JMenuItem(Common.UNDO);
+            popUndo.addActionListener(this);
+            textAreaPopup.add(popUndo);
+
+            line = new JSeparator();
+            textAreaPopup.add(line);
+
+            popCut = new JMenuItem(Common.CUT);
+            popCut.addActionListener(this);
+            textAreaPopup.add(popCut);
+
+            popCopy = new JMenuItem(Common.COPY);
+            popCopy.addActionListener(this);
+            textAreaPopup.add(popCopy);
+
+            popPaste = new JMenuItem(Common.PASTE);
+            popPaste.addActionListener(this);
+            textAreaPopup.add(popPaste);
+
+            line = new JSeparator();
+            textAreaPopup.add(line);
+
+            popSelectAll = new JMenuItem(Common.SELECT_ALL);
+            popSelectAll.addActionListener(this);
+            textAreaPopup.add(popSelectAll);
+
+            popTimeDate = new JMenuItem(Common.TIME_DATE);
+            popTimeDate.addActionListener(this);
+            textAreaPopup.add(popTimeDate);
+        }
+
+        private void isSelectedText(){
             textArea.setFocusable(true);
-            String selectText = textArea.getSelectedText();
-            if(null != selectText){
+            String text = textArea.getSelectedText();
+            if(null != text){
                 setDisabledMenuAtSelecting(true);
             }else{
                 setDisabledMenuAtSelecting(false);
             }
         }
 
-        public void actionPerformed(ActionEvent e) {
-            actionForFileItem(e);
-//            actionForEditItem(e);
-//            actionForFormatItem(e);
-//            actionForViewItem(e);
-//            actionForHelpItem(e);
+        private void setDisabledMenuAtSelecting(boolean b) {
+            cut.setEnabled(b);
+            popCut.setEnabled(b);
+            copy.setEnabled(b);
+            popCopy.setEnabled(b);
         }
 
-        private void actionForFileItem(ActionEvent e) {
+        private void actionForFileItem(ActionEvent e){
             if (e.getSource() == news) {
                 FileMenuUtil.news(MainUI.this);
-            } else if (e.getSource() == open) {
-                FileMenuUtil file = new FileMenuUtil(Common.EMPTY);
+            }else if (e.getSource() == open){
+                var file = new FileMenuUtil(Common.EMPTY);
                 file.open(MainUI.this);
-            } else if (e.getSource() == save) {
-                FileMenuUtil.save(MainUI.this);
-            } else if (e.getSource() == saveAs) {
-                FileMenuUtil.saveAs(MainUI.this);
-            } else if (e.getSource() == properties) {
-                FileMenuUtil file = new FileMenuUtil(Common.EMPTY);
-                file.readProperties(MainUI.this);
-            } else if (e.getSource() == exit) {
-                FileMenuUtil file = new FileMenuUtil(Common.EMPTY);
-                file.exit(MainUI.this);
             }
         }
 
-//        private void actionForEditItem(ActionEvent e) {
-//            if (e.getSource() == undo) {
-//                EditMenuUtil.undo();
-//            } else if (e.getSource() == popUndo) {
-//                EditMenuUtil.undo();
-//            } else if (e.getSource() == copy) {
-//                EditMenuUtil.copy();
-//            } else if (e.getSource() == popCopy) {
-//                EditMenuUtil.copy();
-//            } else if (e.getSource() == paste) {
-//                EditMenuUtil.paste();
-//            } else if (e.getSource() == popPaste) {
-//                EditMenuUtil.paste();
-//            } else if (e.getSource() == cut) {
-//                EditMenuUtil.cut();
-//            } else if (e.getSource() == popCut) {
-//                EditMenuUtil.cut();
-//            } else if (e.getSource() == find) {
-//                setMainUIXY();
-//                EditMenuUtil edit = new EditMenuUtil(Common.EMPTY);
-//                edit.find();
-//            } else if (e.getSource() == findNext) {
-//                EditMenuUtil edit = new EditMenuUtil(Common.EMPTY);
-//                edit.findNext();
-//            } else if (e.getSource() == replace) {
-//                setMainUIXY();
-//                EditMenuUtil edit = new EditMenuUtil(Common.EMPTY);
-//                edit.replace();
-//            } else if (e.getSource() == selectAll) {
-//                EditMenuUtil.selectAll();
-//            } else if (e.getSource() == popSelectAll) {
-//                EditMenuUtil.selectAll();
-//            } else if (e.getSource() == timeDate) {
-//                EditMenuUtil.timeDate();
-//            }else if (e.getSource() == popTimeDate) {
-//                EditMenuUtil.timeDate();
-//            }
-//        }
-
-//        private void actionForFormatItem(ActionEvent e) {
-//            if (e.getSource() == wordWrap) {
-//                FormatMenuUtil.wordWrap();
-//            } else if(e.getSource() == resetFont){
-//                FormatMenuUtil format = new FormatMenuUtil(Common.EMPTY);
-//                format.resetFont(MainUI.this);
-//            }else if (e.getSource() == font) {
-//                setMainUIXY();
-//                FormatMenuUtil format = new FormatMenuUtil(Common.EMPTY);
-//                format.font(MainUI.this);
-//            } else if (e.getSource() == fontSize) {
-//                setMainUIXY();
-//                FormatMenuUtil format = new FormatMenuUtil(Common.EMPTY);
-//                format.fontSize(MainUI.this);
-//            }else if(e.getSource() == fontStyle){
-//                setMainUIXY();
-//                FormatMenuUtil format = new FormatMenuUtil(Common.EMPTY);
-//                format.fontStyle(MainUI.this);
-//            }
-//        }
-//
-//        private void actionForViewItem(ActionEvent e) {
-//            if (e.getSource() == skin) {
-//                setMainUIXY();
-//                ViewMenuUtil view = new ViewMenuUtil(Common.EMPTY);
-//                view.skin(MainUI.this);
-//            }
-//        }
-//
-//        private void actionForHelpItem(ActionEvent e) {
-//            if (e.getSource() == homePage) {
-//                log.debug(Common.NOTEPAD_HOME_PAGE);
-//                NotepadUtil.accessURL(Common.NOTEPAD_PUBLISHED_PAGE);
-//            } else if(e.getSource() == skinPage){
-//                log.debug(Common.NOTEPAD_SKINS);
-//                NotepadUtil.accessURL(Common.NOTEPAD_SUBSTANCE_SKINS_PAGE);
-//            }else if(e.getSource() == sourceCode){
-//                log.debug(Common.SOURCE_CODE);
-//                NotepadUtil.accessURL(Common.NOTEPAD_PUBLISHED_BOOKMARK_PAGE + Common.SOURCE_CODE_BOOKMARK);
-//            }else if(e.getSource() == sourceCodeDownload){
-//                log.debug(Common.SOURCE_CODE_DOWNLOAD);
-//                NotepadUtil.accessURL(Common.NOTEPAD_PUBLISHED_BOOKMARK_PAGE + Common.SOURCE_CODE_DOWNLOAD_BOOKMARK);
-//            }else if(e.getSource() == api){
-//                log.debug(Common.NOTEPAD_API);
-//                NotepadUtil.accessURL(Common.NOTEPAD_PUBLISHED_BOOKMARK_PAGE + Common.NOTEPAD_API_BOOKMARK);
-//            }else if (e.getSource() == about) {
-//                setMainUIXY();
-//                HelpMenuUtil help = new HelpMenuUtil(Common.EMPTY);
-//                help.about(MainUI.this);
-//            }
-//        }
-
-        public boolean isSaved() {
-            return saved;
+        private void actionForEditItem(ActionEvent e){
+            if (e.getSource() == undo){
+                EditMenuUtil.undo();
+            }else if (e.getSource() == copy){
+                EditMenuUtil.copy();
+            }
         }
 
-        public void setSaved(boolean saved) {
-            this.saved = saved;
+        @Override
+        public void actionPerformed(ActionEvent e) {
+                actionForFileItem(e);
+                actionForEditItem(e);
         }
 }
